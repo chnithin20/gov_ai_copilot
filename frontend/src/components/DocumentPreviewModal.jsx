@@ -337,10 +337,10 @@ export default function DocumentPreviewModal({ doc, onClose, soundEnabled = true
               </h4>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', fontFamily: 'sans-serif' }}>
                 <tbody>
-                  {details.fields.map((f, idx) => (
+                  {(details.fields || []).map((f, idx) => (
                     <tr key={idx} style={{ borderBottom: '1px solid #edf2f7', background: idx % 2 === 0 ? '#f7fafc' : 'transparent' }}>
-                      <td style={{ padding: '8px 12px', fontWeight: 600, color: '#4a5568', width: '42%' }}>{f.label}:</td>
-                      <td style={{ padding: '8px 12px', color: '#1a202c', fontWeight: 700 }}>{f.value}</td>
+                      <td style={{ padding: '8px 12px', fontWeight: 600, color: '#4a5568', width: '42%' }}>{f && f.label ? f.label : 'Field'}:</td>
+                      <td style={{ padding: '8px 12px', color: '#1a202c', fontWeight: 700 }}>{f && f.value ? f.value : '—'}</td>
                     </tr>
                   ))}
                 </tbody>

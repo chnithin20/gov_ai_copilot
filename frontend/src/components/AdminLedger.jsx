@@ -1,31 +1,35 @@
 import { useState, useMemo } from 'react';
 import { playSound } from '../utils/soundEngine';
 
-export default function AdminLedger({ soundEnabled, ledgerEntries, applications }) {
+export default function AdminLedger({ soundEnabled, ledgerEntries = [], applications = [] }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState('all');
 
+  const safeLedger = useMemo(() => Array.isArray(ledgerEntries) ? ledgerEntries : [], [ledgerEntries]);
+
   const departments = useMemo(() => {
-    const depts = new Set(ledgerEntries.map(e => e.dept));
+    const depts = new Set(safeLedger.map(e => e && e.dept ? e.dept : 'General'));
     return ['all', ...Array.from(depts)];
-  }, [ledgerEntries]);
+  }, [safeLedger]);
 
   const filteredEntries = useMemo(() => {
-    return ledgerEntries.filter(entry => {
-      const matchesSearch = searchQuery === '' ||
-        entry.txId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        entry.event.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        entry.dept.toLowerCase().includes(searchQuery.toLowerCase());
+    return safeLedger.filter(entry => {
+      if (!entry) return false;
+      const txId = String(entry.txId || '').toLowerCase();
+      const event = String(entry.event || '').toLowerCase();
+      const dept = String(entry.dept || '').toLowerCase();
+      const query = searchQuery.toLowerCase();
+      const matchesSearch = searchQuery === '' || txId.includes(query) || event.includes(query) || dept.includes(query);
       const matchesDept = deptFilter === 'all' || entry.dept === deptFilter;
       return matchesSearch && matchesDept;
     });
-  }, [ledgerEntries, searchQuery, deptFilter]);
+  }, [safeLedger, searchQuery, deptFilter]);
 
   const stats = useMemo(() => ({
-    totalTx: ledgerEntries.length,
-    departments: new Set(ledgerEntries.map(e => e.dept)).size,
+    totalTx: safeLedger.length,
+    departments: new Set(safeLedger.map(e => e && e.dept ? e.dept : 'General')).size,
     integrity: '100%'
-  }), [ledgerEntries]);
+  }), [safeLedger]);
 
   return (
     <section className="workspace-view" id="viewAdmin">

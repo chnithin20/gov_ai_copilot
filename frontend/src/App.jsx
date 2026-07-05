@@ -244,6 +244,7 @@ function App() {
     setCurrentUser(authUser);
     setActiveView(authUser.role);
     localStorage.setItem('gov_active_view', authUser.role);
+    localStorage.setItem('gov_current_user', JSON.stringify(authUser));
     addToast(`Welcome back, ${authUser.name}! Session restored.`, 'success');
   }, [addToast]);
 

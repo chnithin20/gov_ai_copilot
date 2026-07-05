@@ -239,11 +239,14 @@ Block Development Officer, Patna Sadar
 (Auto-generated via Gov AI Copilot)`
 };
 
-export default function OfficerWorkstation({ soundEnabled, applications, onUpdateStatus, ledgerEntries }) {
+export default function OfficerWorkstation({ soundEnabled, applications = [], onUpdateStatus, ledgerEntries = [] }) {
   const [selectedApp, setSelectedApp] = useState(() => {
     try {
       const saved = localStorage.getItem('gov_officer_selectedApp');
-      if (saved && saved !== 'null') return JSON.parse(saved);
+      if (saved && saved !== 'null' && saved !== 'undefined') {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object' && parsed.id) return parsed;
+      }
     } catch (e) {}
     return null;
   });
@@ -258,25 +261,29 @@ export default function OfficerWorkstation({ soundEnabled, applications, onUpdat
   const [previewDoc, setPreviewDoc] = useState(null);
 
   useEffect(() => {
-    localStorage.setItem('gov_officer_selectedApp', JSON.stringify(selectedApp));
+    localStorage.setItem('gov_officer_selectedApp', JSON.stringify(selectedApp || null));
   }, [selectedApp]);
 
   useEffect(() => {
     localStorage.setItem('gov_officer_activeTab', activeTab);
   }, [activeTab]);
 
+  const safeApps = useMemo(() => Array.isArray(applications) ? applications : [], [applications]);
+  const safeLedger = useMemo(() => Array.isArray(ledgerEntries) ? ledgerEntries : [], [ledgerEntries]);
+
   const stats = useMemo(() => ({
-    total: applications.length,
-    pending: applications.filter(a => a.status === 'Pending').length,
-    approved: applications.filter(a => a.status === 'Approved').length,
-    rejected: applications.filter(a => a.status === 'Rejected').length,
-  }), [applications]);
+    total: safeApps.length,
+    pending: safeApps.filter(a => a && (a.status || '').toLowerCase() === 'pending').length,
+    approved: safeApps.filter(a => a && (a.status || '').toLowerCase() === 'approved').length,
+    rejected: safeApps.filter(a => a && (a.status || '').toLowerCase() === 'rejected').length,
+  }), [safeApps]);
 
   const matchedRules = useMemo(() => {
-    if (!selectedApp) return [];
-    const service = selectedApp.service.toLowerCase();
-    return mockRAGRules.filter(r => {
-      const title = r.title.toLowerCase();
+    if (!selectedApp || !selectedApp.service) return [];
+    const service = String(selectedApp.service).toLowerCase();
+    return (Array.isArray(mockRAGRules) ? mockRAGRules : []).filter(r => {
+      if (!r || !r.title) return false;
+      const title = String(r.title).toLowerCase();
       if (service.includes('license') && (title.includes('license') || title.includes('motor'))) return true;
       if (service.includes('agri') && (title.includes('crop') || title.includes('disaster'))) return true;
       if (service.includes('birth') && (title.includes('birth') || title.includes('municipal'))) return true;
@@ -443,23 +450,23 @@ export default function OfficerWorkstation({ soundEnabled, applications, onUpdat
             <>
               <div className="panel-header">
                 <div className="header-left">
-                  <span className="panel-badge cyan">{selectedApp.id}</span>
-                  <h3>{selectedApp.name}</h3>
+                  <span className="panel-badge cyan">{selectedApp.id || 'N/A'}</span>
+                  <h3>{selectedApp.name || 'Anonymous Applicant'}</h3>
                 </div>
-                <span className={`status-badge ${selectedApp.status.toLowerCase()}`}>{selectedApp.status}</span>
+                <span className={`status-badge ${(selectedApp.status || 'pending').toLowerCase()}`}>{selectedApp.status || 'Pending'}</span>
               </div>
 
               <div className="detail-section">
                 <h4>Application Details</h4>
-                {Object.entries(selectedApp.fields).map(([key, val]) => (
+                {Object.entries(selectedApp.fields || {}).map(([key, val]) => (
                   <div key={key} className="detail-field-row">
                     <span className="detail-field-label">{key}</span>
-                    <span className="detail-field-value">{val}</span>
+                    <span className="detail-field-value">{String(val || '')}</span>
                   </div>
                 ))}
               </div>
 
-              {selectedApp.attachments && selectedApp.attachments.length > 0 && (
+              {selectedApp.attachments && Array.isArray(selectedApp.attachments) && selectedApp.attachments.length > 0 && (
                 <div className="detail-section">
                   <h4>Attached Documents</h4>
                   {selectedApp.attachments.map((att, i) => (
@@ -478,8 +485,8 @@ export default function OfficerWorkstation({ soundEnabled, applications, onUpdat
                           </svg>
                         </div>
                         <div className="upload-item-details">
-                          <strong>{att.name}</strong>
-                          <span>{att.size} • {att.type}</span>
+                          <strong>{att.name || 'Document'}</strong>
+                          <span>{att.size || 'Unknown'} • {att.type || 'File'}</span>
                         </div>
                       </div>
                       <span className="ocr-result-badge" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -492,7 +499,7 @@ export default function OfficerWorkstation({ soundEnabled, applications, onUpdat
 
               <div className="detail-section">
                 <h4>AI Case Summary</h4>
-                <p style={{ fontSize: '0.88rem', lineHeight: 1.7 }}>{selectedApp.summary}</p>
+                <p style={{ fontSize: '0.88rem', lineHeight: 1.7 }}>{selectedApp.summary || 'No summary available for this case.'}</p>
               </div>
 
               {matchedRules.length > 0 && (
@@ -526,7 +533,7 @@ export default function OfficerWorkstation({ soundEnabled, applications, onUpdat
                 </button>
                 {draftVisible && (
                   <div className="doc-draft-area fade-in-up" style={{ whiteSpace: 'pre-wrap', fontFamily: 'var(--font-mono)', fontSize: '0.82rem', lineHeight: 1.6 }}>
-                    {draftTemplates[selectedApp.service] || `Official response for ${selectedApp.service} — Draft generated by AI Copilot.`}
+                    {draftTemplates[selectedApp.service] || `Official response for ${selectedApp.service || 'application'} — Draft generated by AI Copilot.`}
                   </div>
                 )}
               </div>
