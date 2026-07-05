@@ -192,26 +192,26 @@ ALTER TABLE officer_tasks ENABLE ROW LEVEL SECURITY;
 
 -- Allow public read access to published documents and chunks
 CREATE POLICY "Public read access for documents" ON documents
-    FOR ALL USING (true);
+    FOR ALL USING (true) WITH CHECK (true);
 
 CREATE POLICY "Public read access for chunks" ON document_chunks
-    FOR ALL USING (true);
+    FOR ALL USING (true) WITH CHECK (true);
 
 -- Allow all insert/select operations for chat interactions and citizen requests
 CREATE POLICY "Public access for chat history" ON chat_history
-    FOR ALL USING (true);
+    FOR ALL USING (true) WITH CHECK (true);
 
 CREATE POLICY "Public access for service requests" ON service_requests
-    FOR ALL USING (true);
+    FOR ALL USING (true) WITH CHECK (true);
 
 CREATE POLICY "Public access for audit ledger" ON audit_ledger
-    FOR ALL USING (true);
+    FOR ALL USING (true) WITH CHECK (true);
 
 CREATE POLICY "Public access for citizens" ON citizens
-    FOR ALL USING (true);
+    FOR ALL USING (true) WITH CHECK (true);
 
 CREATE POLICY "Public access for officer tasks" ON officer_tasks
-    FOR ALL USING (true);
+    FOR ALL USING (true) WITH CHECK (true);
 
 -- ============================================================================
 -- 8. INITIAL SEED / REFERENCE DATA
