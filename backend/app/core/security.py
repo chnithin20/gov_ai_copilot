@@ -32,27 +32,5 @@ class SecurityService:
 
     @staticmethod
     def check_rate_limit(client_ip: str) -> bool:
-        """Applies an in-memory sliding rate limit window based on settings."""
-        limit = settings.RATE_LIMIT_PER_MINUTE
-        
-        now = time.time()
-        # Evict expired IP tokens
-        expired_ips = [ip for ip, info in IN_MEMORY_LIMITS.items() if now - info["start_time"] > 60]
-        for ip in expired_ips:
-            IN_MEMORY_LIMITS.pop(ip, None)
-            
-        if client_ip not in IN_MEMORY_LIMITS:
-            IN_MEMORY_LIMITS[client_ip] = {"count": 1, "start_time": now}
-            return True
-            
-        user_limit = IN_MEMORY_LIMITS[client_ip]
-        if now - user_limit["start_time"] > 60:
-            user_limit["count"] = 1
-            user_limit["start_time"] = now
-            return True
-            
-        if user_limit["count"] >= limit:
-            return False
-            
-        user_limit["count"] += 1
+        """Rate limiting has been disabled per user request."""
         return True

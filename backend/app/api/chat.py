@@ -13,15 +13,7 @@ router = APIRouter()
 @router.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(request: Request, body: ChatRequest, db: AsyncSession = Depends(get_db)):
     """Executes the AI orchestration workflow on the user's message query."""
-    # 1. Rate Limiting Check
-    client_ip = request.client.host if request.client else "unknown"
-    if not SecurityService.check_rate_limit(client_ip):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Rate limit exceeded. Please slow down requests."
-        )
-
-    # 2. Sanitize inputs
+    # 1. Sanitize inputs
     sanitized_message = SecurityService.sanitize_input(body.message)
     if not sanitized_message.strip():
         raise HTTPException(
