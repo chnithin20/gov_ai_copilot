@@ -1,0 +1,169 @@
+# ==============================================================================
+# GOVERNMENT AI COPILOT - MASTER ROOT .GITIGNORE
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. ENVIRONMENT VARIABLES, SECRETS & CONFIDENTIAL DATA (NEVER COMMIT!)
+# ------------------------------------------------------------------------------
+# Ignore all environment files containing API keys, database URLs, and passwords
+.env
+.env.*
+!.env.example
+!.env.template
+
+# Private keys, certificates, and SSL/TLS credentials
+*.key
+*.pem
+*.cert
+*.crt
+*.p12
+*.pfx
+*.keystore
+*.jks
+id_rsa*
+*.secret
+
+# Confidential service accounts, OAuth tokens, and cloud credentials
+credentials.json
+service-account*.json
+*secret*.json
+secrets.json
+token.json
+auth.json
+*.ovpn
+*.kdbx
+
+# ------------------------------------------------------------------------------
+# 2. PYTHON / BACKEND (FastAPI, SQLAlchemy, LangChain, PyTest)
+# ------------------------------------------------------------------------------
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environments
+venv/
+.venv/
+env/
+.env_venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Packaging & Distribution
+*.egg-info/
+.installed.cfg
+*.egg
+dist/
+build/
+develop-eggs/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.whl
+
+# Testing, Coverage & Linters
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+test-reports/
+*.xml
+
+# Local Databases & Caches
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+dump.rdb
+celerybeat-schedule
+celerybeat.pid
+
+# ------------------------------------------------------------------------------
+# 3. NODE.JS / FRONTEND (React, Vite, Tailwind, NPM/Yarn)
+# ------------------------------------------------------------------------------
+# Dependencies
+node_modules/
+jspm_packages/
+web_modules/
+
+# Production Builds & Temporary Output
+/frontend/dist/
+/frontend/build/
+*.local
+
+# Logs & Debug Caches
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+.eslintcache
+.vite/
+.cache/
+.temp/
+.tmp/
+
+# ------------------------------------------------------------------------------
+# 4. OS & IDE / EDITOR FILES
+# ------------------------------------------------------------------------------
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+
+# macOS & Linux
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+*~
+
+# IDEs & Editors (VS Code, JetBrains/PyCharm, Vim, Sublime)
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swo
+*.swp
+*.sublime-workspace
+*.sublime-project
+
+# ------------------------------------------------------------------------------
+# 5. RUNTIME LOGS, UPLOADS & TEMPORARY FILES
+# ------------------------------------------------------------------------------
+*.log
+logs/
+tmp/
+temp/
+scratch/
+uploads/
+*.pdf.tmp
+*.csv.tmp
+.gemini/
+.antigravity/
+.antigravityignore

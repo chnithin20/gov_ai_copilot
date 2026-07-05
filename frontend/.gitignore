@@ -1,0 +1,28 @@
+# ==============================================================================
+# GOVERNMENT AI COPILOT - FRONTEND .GITIGNORE
+# ==============================================================================
+
+# 1. Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# 2. Dependencies
+node_modules/
+jspm_packages/
+
+# 3. Production Builds
+dist/
+build/
+
+# 4. Logs & Debug Caches
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.eslintcache
+.vite/
+.cache/
+tmp/
+temp/
