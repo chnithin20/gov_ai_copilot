@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
+import httpx
 
 from app.core.database import get_db
+from app.core.config import settings
 from app.core.security import SecurityService
 from app.models.schemas import ChatRequest, ChatResponse, CitationInfo, ChatHistory
 from app.workflows.government_graph import app_graph
@@ -84,14 +86,42 @@ async def chat_endpoint(request: Request, body: ChatRequest, db: AsyncSession = 
                 confidence=confidence,
                 language=results.get("detected_language", "en")
             )
-            db.add(history)
-            await db.commit()
+            if db is not None:
+                db.add(history)
+                await db.commit()
+            else:
+                raise Exception("Database session unavailable")
         except Exception as db_err:
             print(f"Warning: Failed to save chat history to database: {db_err}")
             try:
-                await db.rollback()
+                if db is not None:
+                    await db.rollback()
             except Exception:
                 pass
+            try:
+                if settings.SUPABASE_URL and settings.SUPABASE_KEY:
+                    async with httpx.AsyncClient() as client:
+                        await client.post(
+                            f"{settings.SUPABASE_URL}/rest/v1/chat_history",
+                            headers={
+                                "Content-Type": "application/json",
+                                "apikey": settings.SUPABASE_KEY,
+                                "Authorization": f"Bearer {settings.SUPABASE_KEY}",
+                                "Prefer": "return=representation"
+                            },
+                            json={
+                                "session_id": body.session_id or "default-session",
+                                "query": sanitized_message,
+                                "translated_query": results.get("translated_query"),
+                                "response": response_text,
+                                "citations": citations_raw,
+                                "confidence": confidence,
+                                "language": results.get("detected_language", "en")
+                            },
+                            timeout=5.0
+                        )
+            except Exception as rest_err:
+                print(f"Warning: Supabase REST chat history saving failed: {rest_err}")
 
     return ChatResponse(
         response=response_text,
