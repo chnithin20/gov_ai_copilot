@@ -239,7 +239,7 @@ Block Development Officer, Patna Sadar
 (Auto-generated via Gov AI Copilot)`
 };
 
-export default function OfficerWorkstation({ soundEnabled, applications = [], onUpdateStatus, ledgerEntries = [] }) {
+export default function OfficerWorkstation({ soundEnabled, applications = [], onUpdateStatus, onRefreshDB, ledgerEntries = [] }) {
   const [selectedApp, setSelectedApp] = useState(() => {
     try {
       const saved = localStorage.getItem('gov_officer_selectedApp');
@@ -316,10 +316,33 @@ export default function OfficerWorkstation({ soundEnabled, applications = [], on
   return (
     <section className="workspace-view active" id="viewOfficer">
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h2 style={{ fontSize: '1.45rem', fontWeight: 700 }}>Officer Administrative Desk</h2>
-          <p className="text-muted" style={{ fontSize: '0.85rem' }}>Verify documents, perform RAG manual validation, and process applications</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h2 style={{ fontSize: '1.45rem', fontWeight: 700, margin: 0 }}>Officer Administrative Desk</h2>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '3px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600 }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span>
+              Database Connected
+            </span>
+          </div>
+          <p className="text-muted" style={{ fontSize: '0.85rem', margin: '4px 0 0 0' }}>Connected to officer_dashboard_tasks table — Verify documents and process live applications</p>
+        </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {onRefreshDB && (
+            <button
+              onClick={() => onRefreshDB()}
+              className="btn-secondary"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', fontSize: '0.85rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: 'inherit', cursor: 'pointer', transition: 'all 0.2s' }}
+              title="Sync latest citizen applications from Database"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="23 4 23 10 17 10"/>
+                <polyline points="1 20 1 14 7 14"/>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+              </svg>
+              Sync Live DB
+            </button>
+          )}
         </div>
       </div>
 

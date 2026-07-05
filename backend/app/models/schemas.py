@@ -100,6 +100,31 @@ class OfficerTask(Base):
     assigned_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     completed_at = Column(DateTime, nullable=True)
 
+class OfficerDashboardTask(Base):
+    __tablename__ = "officer_dashboard_tasks"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    case_id = Column(String(20), unique=True, nullable=False, index=True)
+    citizen_name = Column(String(100), nullable=False)
+    service_name = Column(String(150), nullable=False)
+    language = Column(String(50), nullable=True)
+    status = Column(String(20), default="Pending", index=True)
+    full_name = Column(String(100), nullable=True)
+    age = Column(Integer, nullable=True)
+    document_number = Column(String(50), nullable=True)
+    office_authority = Column(String(100), nullable=True)
+    document_hash = Column(Text, nullable=True)
+    physical_verification = Column(String(100), nullable=True)
+    document_1_name = Column(String(255), nullable=True)
+    document_1_size = Column(String(50), nullable=True)
+    document_1_status = Column(String(50), nullable=True)
+    document_2_name = Column(String(255), nullable=True)
+    document_2_size = Column(String(50), nullable=True)
+    document_2_status = Column(String(50), nullable=True)
+    assigned_officer = Column(String(50), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
 
 # ==========================================
 # Pydantic Schemas

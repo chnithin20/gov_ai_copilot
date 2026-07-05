@@ -112,6 +112,37 @@ function App() {
       }
     };
     loadDbUsers();
+
+    const loadDbApplications = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/api/applications');
+        if (res.ok) {
+          const dbApps = await res.json();
+          if (Array.isArray(dbApps) && dbApps.length > 0) {
+            setApplications(prev => {
+              const prevMap = new Map(prev.map(a => [a.id, a]));
+              dbApps.forEach(a => {
+                prevMap.set(a.id, {
+                  id: a.id,
+                  name: a.name || 'Citizen',
+                  service: a.service || 'Service Request',
+                  timestamp: a.timestamp || new Date().toISOString().replace('T', ' ').substring(0, 19),
+                  status: a.status || 'Pending',
+                  language: a.language || 'English',
+                  fields: a.fields || {},
+                  attachments: a.attachments || [],
+                  summary: a.summary || ''
+                });
+              });
+              return Array.from(prevMap.values());
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Could not sync DB applications on startup:', err);
+      }
+    };
+    loadDbApplications();
   }, []);
 
   useEffect(() => {
@@ -270,8 +301,15 @@ function App() {
 
   const handleAddApplication = useCallback((app) => {
     const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19)
-    setApplications(prev => [...prev, { ...app, timestamp }])
+    const newApp = { ...app, timestamp };
+    setApplications(prev => [...prev, newApp])
     addToast(`New application submitted for ${app.service} (${app.id})!`, 'info');
+    
+    fetch('http://localhost:8000/api/applications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newApp)
+    }).catch(err => console.warn('Failed to save application to DB:', err));
   }, [addToast])
 
   const handleAddLedgerEntry = useCallback((entry) => {
@@ -295,7 +333,48 @@ function App() {
     }])
     if (soundEnabled) playSound('success')
     addToast(`Application ${appId} status updated to ${newStatus.toUpperCase()}`, newStatus === 'Approved' ? 'success' : 'error');
+    
+    fetch(`http://localhost:8000/api/applications/${encodeURIComponent(appId)}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus })
+    }).catch(err => console.warn('Failed to update status in DB:', err));
   }, [soundEnabled, addToast])
+
+  const handleRefreshDB = useCallback(async () => {
+    try {
+      const res = await fetch('http://localhost:8000/api/applications');
+      if (res.ok) {
+        const dbApps = await res.json();
+        if (Array.isArray(dbApps) && dbApps.length > 0) {
+          setApplications(prev => {
+            const prevMap = new Map(prev.map(a => [a.id, a]));
+            dbApps.forEach(a => {
+              prevMap.set(a.id, {
+                id: a.id,
+                name: a.name || 'Citizen',
+                service: a.service || 'Service Request',
+                timestamp: a.timestamp || new Date().toISOString().replace('T', ' ').substring(0, 19),
+                status: a.status || 'Pending',
+                language: a.language || 'English',
+                fields: a.fields || {},
+                attachments: a.attachments || [],
+                summary: a.summary || ''
+              });
+            });
+            return Array.from(prevMap.values());
+          });
+          addToast(`Synced ${dbApps.length} applications from Officer Database!`, 'success');
+          return true;
+        }
+      }
+      addToast('No new tasks found in Database.', 'info');
+    } catch (err) {
+      console.warn('Could not refresh DB applications:', err);
+      addToast('Failed to connect to Officer Database.', 'error');
+    }
+    return false;
+  }, [addToast]);
 
   const toggleSound = useCallback(() => {
     setSoundEnabled(prev => !prev)
@@ -452,6 +531,7 @@ function App() {
             soundEnabled={soundEnabled}
             applications={applications}
             onUpdateStatus={handleUpdateStatus}
+            onRefreshDB={handleRefreshDB}
             ledgerEntries={ledgerEntries}
           />
         )}

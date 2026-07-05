@@ -238,3 +238,46 @@ VALUES
     ('TX-8839201-SYS', 'General Administration', 'System Initialization', '{"note": "AI Copilot portal database schema deployed"}'::jsonb, 'VERIFIED', 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'),
     ('TX-9948201-AGR', 'Agriculture & Farmers Welfare', 'Workflow Policy Registered', '{"scheme": "Rythu Bandhu", "version": "v2"}'::jsonb, 'VERIFIED', 'a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e')
 ON CONFLICT DO NOTHING;
+
+-- Officer Dashboard Tasks Table (created for Officer Workstation applications)
+CREATE TABLE IF NOT EXISTS officer_dashboard_tasks (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    case_id VARCHAR(20) UNIQUE NOT NULL,
+    citizen_name VARCHAR(100) NOT NULL,
+    service_name VARCHAR(150) NOT NULL,
+    language VARCHAR(50),
+    status VARCHAR(20) DEFAULT 'Pending',
+    full_name VARCHAR(100),
+    age INTEGER,
+    document_number VARCHAR(50),
+    office_authority VARCHAR(100),
+    document_hash TEXT,
+    physical_verification VARCHAR(100),
+    document_1_name VARCHAR(255),
+    document_1_size VARCHAR(50),
+    document_1_status VARCHAR(50),
+    document_2_name VARCHAR(255),
+    document_2_size VARCHAR(50),
+    document_2_status VARCHAR(50),
+    assigned_officer VARCHAR(50),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE officer_dashboard_tasks ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public access for officer_dashboard_tasks" ON officer_dashboard_tasks
+    FOR ALL USING (true) WITH CHECK (true);
+
+INSERT INTO officer_dashboard_tasks (
+    case_id, citizen_name, service_name, language, status,
+    full_name, age, document_number, office_authority, document_hash, physical_verification,
+    document_1_name, document_1_size, document_1_status,
+    document_2_name, document_2_size, document_2_status,
+    assigned_officer
+) VALUES
+('TX-1002', 'Amit Sen', 'Driving License Renewal', 'English', 'Approved', 'Amit Sen', 42, 'DL-142019992', 'West Delhi RTO', 'sha256:d84f...c120', 'Waived (OCR Confirmed)', 'DL_Card_Old.png', '245 KB', 'Verified', 'Med_Cert_Form1A.pdf', '1.2 MB', 'Verified', 'officer'),
+('TX-1481', 'Baldev Singh', 'Agricultural Crop Subsidy', 'Punjabi (ਪੰਜਾਬੀ)', 'Pending', 'Baldev Singh', 55, 'FARM-88201', 'Punjab Agriculture Department', 'sha256:abc12...e901', 'Pending Manual Review', 'Land_Record.pdf', '2.1 MB', 'Verified', 'Farmer_ID.png', '320 KB', 'Verified', 'officer'),
+('TX-7104', 'K. Srinivasa Rao', 'Rythu Bandhu Scheme', 'Telugu (తెలుగు)', 'Pending', 'K. Srinivasa Rao', 48, 'RB-991201', 'Telangana Agriculture Office', 'sha256:98fa...bc23', 'Verified', 'Rythu_Passbook.pdf', '1.8 MB', 'Verified', 'Farmer_Certificate.pdf', '850 KB', 'Verified', 'officer'),
+('TX-8821', 'Ananya Sharma', 'Aadhaar Details Update', 'English', 'Pending', 'Ananya Sharma', 29, 'AAD-778291', 'UIDAI Hyderabad', 'sha256:7a2d...f451', 'OCR Verified', 'Aadhaar_Old.pdf', '890 KB', 'Verified', 'Address_Proof.pdf', '650 KB', 'Verified', 'officer')
+ON CONFLICT (case_id) DO NOTHING;
+
