@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { mockRAGRules } from '../utils/data';
 import { playSound } from '../utils/soundEngine';
 import DocumentPreviewModal from './DocumentPreviewModal';
