@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     
     # Database configuration (Supabase)
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/postgres"
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""
     
     # OpenAI configurations (commented out — using Ollama instead)
     # OPENAI_API_KEY: str = "mock-openai-key"

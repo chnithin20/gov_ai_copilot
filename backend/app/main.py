@@ -5,7 +5,7 @@ from sqlalchemy import text
 
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.api import chat, upload, health
+from app.api import chat, upload, health, auth
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -41,6 +41,7 @@ app.add_middleware(
 )
 
 # Register API namespaces
+app.include_router(auth.router, prefix="/api", tags=["Authentication"])
 app.include_router(chat.router, prefix="/api", tags=["Chat"])
 app.include_router(upload.router, prefix="/api", tags=["Ingestion"])
 app.include_router(health.router, prefix="/api", tags=["Monitoring"])

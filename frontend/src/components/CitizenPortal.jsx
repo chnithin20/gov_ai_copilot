@@ -195,22 +195,58 @@ export default function CitizenPortal({ soundEnabled, onAddApplication, onAddLed
     });
   }, [selectedLanguage, i18n.language, t]);
 
-  const speakText = useCallback((text, langCode) => {
+  // Load TTS voices into browser memory on mount
+  useEffect(() => {
+    if (window.speechSynthesis) {
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+      };
+    }
+  }, []);
+
+  const speakText = useCallback((text, langCode, force = false) => {
     try {
-      if (!voiceResponseEnabled || !window.speechSynthesis) return;
+      if ((!voiceResponseEnabled && !force) || !window.speechSynthesis) return;
       window.speechSynthesis.cancel();
       const cleanText = text.replace(/[\u1000-\uFFFF]|[*#📚🎯_`~]/g, '').trim();
       if (!cleanText) return;
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      const langMap = {
-        'en': 'en-IN', 'hi': 'hi-IN', 'pb': 'pa-IN', 'pa': 'pa-IN',
-        'ta': 'ta-IN', 'te': 'te-IN', 'bn': 'bn-IN', 'mr': 'mr-IN',
-        'gu': 'gu-IN', 'kn': 'kn-IN', 'ml': 'ml-IN', 'ur': 'ur-IN', 'or': 'or-IN'
-      };
-      utterance.lang = langMap[langCode || selectedLanguage] || langMap[i18n.language] || 'en-IN';
-      utterance.rate = 1.0;
-      utterance.onerror = (e) => console.warn('Speech synthesis error:', e);
-      window.speechSynthesis.speak(utterance);
+
+      // Wrap in short timeout to avoid Windows Chrome/Edge TTS cancel freeze bug
+      setTimeout(() => {
+        try {
+          const utterance = new SpeechSynthesisUtterance(cleanText);
+          const langMap = {
+            'en': 'en-IN', 'hi': 'hi-IN', 'pb': 'pa-IN', 'pa': 'pa-IN',
+            'ta': 'ta-IN', 'te': 'te-IN', 'bn': 'bn-IN', 'mr': 'mr-IN',
+            'gu': 'gu-IN', 'kn': 'kn-IN', 'ml': 'ml-IN', 'ur': 'ur-IN', 'or': 'or-IN'
+          };
+          const targetLang = langMap[langCode || selectedLanguage] || langMap[i18n.language] || 'en-IN';
+          utterance.lang = targetLang;
+          utterance.rate = 1.0;
+
+          // Attach best matching voice if available in the browser
+          const voices = window.speechSynthesis.getVoices();
+          if (voices && voices.length > 0) {
+            const matchingVoice = voices.find(v => v.lang.replace('_', '-').toLowerCase() === targetLang.toLowerCase()) ||
+                                  voices.find(v => v.lang.replace('_', '-').toLowerCase().startsWith(targetLang.split('-')[0].toLowerCase())) ||
+                                  voices.find(v => v.lang.toLowerCase().includes('india') || v.lang.toLowerCase().includes('en-in') || v.lang.toLowerCase().includes('en-us')) ||
+                                  voices.find(v => v.default) || voices[0];
+            if (matchingVoice) {
+              utterance.voice = matchingVoice;
+            }
+          }
+
+          utterance.onerror = (e) => console.warn('Speech synthesis error:', e);
+          
+          if (window.speechSynthesis.paused) {
+            window.speechSynthesis.resume();
+          }
+          window.speechSynthesis.speak(utterance);
+        } catch (err) {
+          console.warn('Speech execution error:', err);
+        }
+      }, 50);
     } catch (err) {
       console.warn('Speech synthesis exception:', err);
     }
@@ -750,7 +786,7 @@ export default function CitizenPortal({ soundEnabled, onAddApplication, onAddLed
                 {m.sender === 'copilot' && (
                   <button
                     type="button"
-                    onClick={() => speakText(m.text, selectedLanguage)}
+                    onClick={() => speakText(m.text, selectedLanguage, true)}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.95rem', padding: '0 2px', opacity: 0.8, flexShrink: 0 }}
                     title={t('portal.speakBtnTitle', 'Listen to response')}
                   >

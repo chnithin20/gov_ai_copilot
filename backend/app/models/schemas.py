@@ -134,6 +134,7 @@ class CitizenProfile(BaseModel):
     phone: Optional[str] = None
     email: Optional[str] = None
     preferred_language: str = "en"
+    aadhaar_masked: Optional[str] = None
     is_verified: bool = True
 
 class ServiceRequestInfo(BaseModel):

@@ -83,6 +83,38 @@ function App() {
   }, [registeredUsers]);
 
   useEffect(() => {
+    // Load existing citizens from backend / Supabase DB on startup
+    const loadDbUsers = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/api/users');
+        if (res.ok) {
+          const dbUsers = await res.json();
+          if (Array.isArray(dbUsers) && dbUsers.length > 0) {
+            setRegisteredUsers(prev => {
+              const prevMap = new Map(prev.map(u => [u.username.toLowerCase(), u]));
+              dbUsers.forEach(u => {
+                if (!prevMap.has(u.username.toLowerCase())) {
+                  prevMap.set(u.username.toLowerCase(), {
+                    username: u.username,
+                    password: 'gov_password_2026', // Standard portal login for demo citizens
+                    role: 'citizen',
+                    name: u.full_name,
+                    fields: { aadhaar: u.aadhaar_masked ? u.aadhaar_masked.replace(/X/g, '') || '1234' : '1234', phone: u.phone, email: u.email }
+                  });
+                }
+              });
+              return Array.from(prevMap.values());
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Could not sync DB users on startup:', err);
+      }
+    };
+    loadDbUsers();
+  }, []);
+
+  useEffect(() => {
     if (currentUser) {
       localStorage.setItem('gov_current_user', JSON.stringify(currentUser));
     } else {
@@ -152,8 +184,54 @@ function App() {
     }
   }, [currentUser, soundEnabled]);
 
-  const handleRegisterUser = useCallback((newUser) => {
-    setRegisteredUsers(prev => [...prev, newUser]);
+  const handleRegisterUser = useCallback(async (newUser) => {
+    setRegisteredUsers(prev => {
+      if (prev.some(u => u.username.toLowerCase() === newUser.username.toLowerCase())) return prev;
+      return [...prev, newUser];
+    });
+
+    // Persist registration directly to Backend Database & Supabase
+    try {
+      const payload = {
+        username: newUser.username,
+        full_name: newUser.name,
+        phone: newUser.fields?.phone || '+91-9876543210',
+        email: `${newUser.username}@citizen.gov.in`,
+        preferred_language: 'en',
+        aadhaar_masked: newUser.fields?.aadhaar ? `XXXXXXXX${newUser.fields.aadhaar.slice(-4)}` : 'XXXXXXXX1234',
+        is_verified: true
+      };
+      await fetch('http://localhost:8000/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch (err) {
+      console.warn('Backend DB registration fallback to Supabase:', err);
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ijgnkimiffbkszbpyavc.supabase.co';
+        const supabaseKey = import.meta.env.VITE_SUPABASE_KEY || 'sb_publishable_oTelbOMXCrY3tdEAlrLwHw_m4IJopUd';
+        await fetch(`${supabaseUrl}/rest/v1/citizens`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify({
+            username: newUser.username,
+            full_name: newUser.name,
+            phone: newUser.fields?.phone || '+91-9876543210',
+            email: `${newUser.username}@citizen.gov.in`,
+            preferred_language: 'en',
+            aadhaar_masked: newUser.fields?.aadhaar ? `XXXXXXXX${newUser.fields.aadhaar.slice(-4)}` : 'XXXXXXXX1234'
+          })
+        });
+      } catch (e) {
+        console.error('Failed to store registration in Supabase:', e);
+      }
+    }
   }, []);
 
   const handleLoginSuccess = useCallback((user) => {
