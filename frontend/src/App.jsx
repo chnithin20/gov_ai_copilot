@@ -6,6 +6,7 @@ import CitizenPortal from './components/CitizenPortal'
 import OfficerWorkstation from './components/OfficerWorkstation'
 import AdminLedger from './components/AdminLedger'
 import AuthPortal from './components/AuthPortal'
+import Footer from './components/Footer'
 import { initialApplications, initialLedger, generateHash } from './utils/data'
 import { playSound } from './utils/soundEngine'
 
@@ -143,6 +144,37 @@ function App() {
       }
     };
     loadDbApplications();
+
+    // Load audit ledger from DB on startup
+    const loadDbLedger = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/api/ledger');
+        if (res.ok) {
+          const dbEntries = await res.json();
+          if (Array.isArray(dbEntries) && dbEntries.length > 0) {
+            setLedgerEntries(prev => {
+              const prevMap = new Map(prev.map(e => [e.txId + e.event, e]));
+              dbEntries.forEach(e => {
+                const key = e.tx_id + e.event_type;
+                if (!prevMap.has(key)) {
+                  prevMap.set(key, {
+                    txId: (e.details?.original_tx_id) || e.tx_id,
+                    event: e.event_type,
+                    dept: e.department,
+                    timestamp: e.created_at,
+                    hash: e.integrity_hash
+                  });
+                }
+              });
+              return Array.from(prevMap.values());
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Could not sync DB ledger on startup:', err);
+      }
+    };
+    loadDbLedger();
   }, []);
 
   useEffect(() => {
@@ -304,18 +336,44 @@ function App() {
     const newApp = { ...app, timestamp };
     setApplications(prev => [...prev, newApp])
     addToast(`New application submitted for ${app.service} (${app.id})!`, 'info');
-    
+
+    // Persist to officer_dashboard_tasks (flat table used by officer view)
     fetch('http://localhost:8000/api/applications', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newApp)
-    }).catch(err => console.warn('Failed to save application to DB:', err));
-  }, [addToast])
+    }).catch(err => console.warn('Failed to save application to officer_dashboard_tasks:', err));
+
+    // Also persist to normalized service_requests + officer_tasks tables
+    const dept = newApp.fields?.['Office Authority'] || newApp.fields?.['District / Mandal'] || 'Government Desk'
+    fetch('http://localhost:8000/api/service-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        application_number: newApp.id,
+        citizen_username: currentUser?.username || null,
+        service_type: newApp.service,
+        department: dept,
+        status: 'SUBMITTED',
+        form_data: newApp.fields || {},
+        uploaded_documents: newApp.attachments || [],
+        assigned_officer: 'officer'
+      })
+    }).catch(err => console.warn('Failed to save service_request to DB:', err));
+  }, [addToast, currentUser])
 
   const handleAddLedgerEntry = useCallback((entry) => {
     const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19)
     const hash = generateHash(entry.txId + entry.event + timestamp)
-    setLedgerEntries(prev => [...prev, { ...entry, timestamp, hash }])
+    const newEntry = { ...entry, timestamp, hash }
+    setLedgerEntries(prev => [...prev, newEntry])
+
+    // Persist to backend audit_ledger table
+    fetch('http://localhost:8000/api/ledger', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...newEntry, details: { source: 'citizen_portal' } })
+    }).catch(err => console.warn('Failed to save ledger entry to DB:', err))
   }, [])
 
   const handleUpdateStatus = useCallback((appId, newStatus) => {
@@ -324,57 +382,96 @@ function App() {
     ))
     const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19)
     const hash = generateHash(appId + newStatus + timestamp)
-    setLedgerEntries(prev => [...prev, {
+    const ledgerEntry = {
       timestamp,
       txId: appId,
       event: `Status Updated: ${newStatus.toUpperCase()}`,
       dept: 'Officer Action',
       hash
-    }])
+    }
+    setLedgerEntries(prev => [...prev, ledgerEntry])
     if (soundEnabled) playSound('success')
     addToast(`Application ${appId} status updated to ${newStatus.toUpperCase()}`, newStatus === 'Approved' ? 'success' : 'error');
-    
+
+    // Update flat officer_dashboard_tasks table
     fetch(`http://localhost:8000/api/applications/${encodeURIComponent(appId)}/status`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus })
-    }).catch(err => console.warn('Failed to update status in DB:', err));
-  }, [soundEnabled, addToast])
+    }).catch(err => console.warn('Failed to update officer_dashboard_tasks status in DB:', err));
 
-  const handleRefreshDB = useCallback(async () => {
+    // Update normalized service_requests + officer_tasks tables
+    fetch(`http://localhost:8000/api/service-requests/${encodeURIComponent(appId)}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: newStatus.toUpperCase(),
+        notes: `Officer action: ${newStatus} at ${timestamp}`,
+        officer_username: currentUser?.username || 'officer'
+      })
+    }).catch(err => console.warn('Failed to update service_requests status in DB:', err));
+
+    // Persist officer action to audit ledger
+    fetch('http://localhost:8000/api/ledger', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        txId: appId,
+        event: `Status Updated: ${newStatus.toUpperCase()}`,
+        dept: 'Officer Action',
+        timestamp,
+        hash,
+        details: { officer: currentUser?.username || 'officer', new_status: newStatus }
+      })
+    }).catch(err => console.warn('Failed to save status-change ledger entry:', err));
+  }, [soundEnabled, addToast, currentUser])
+
+  const mergeApplicationsFromDB = useCallback((dbApps) => {
+    setApplications(prev => {
+      const prevMap = new Map(prev.map(a => [a.id, a]));
+      dbApps.forEach(a => {
+        prevMap.set(a.id, {
+          id: a.id,
+          name: a.name || 'Citizen',
+          service: a.service || 'Service Request',
+          timestamp: a.timestamp || new Date().toISOString().replace('T', ' ').substring(0, 19),
+          status: a.status || 'Pending',
+          language: a.language || 'English',
+          fields: a.fields || {},
+          attachments: a.attachments || [],
+          summary: a.summary || ''
+        });
+      });
+      return Array.from(prevMap.values());
+    });
+  }, []);
+
+  const handleRefreshDB = useCallback(async (silent = false) => {
     try {
       const res = await fetch('http://localhost:8000/api/applications');
       if (res.ok) {
         const dbApps = await res.json();
         if (Array.isArray(dbApps) && dbApps.length > 0) {
-          setApplications(prev => {
-            const prevMap = new Map(prev.map(a => [a.id, a]));
-            dbApps.forEach(a => {
-              prevMap.set(a.id, {
-                id: a.id,
-                name: a.name || 'Citizen',
-                service: a.service || 'Service Request',
-                timestamp: a.timestamp || new Date().toISOString().replace('T', ' ').substring(0, 19),
-                status: a.status || 'Pending',
-                language: a.language || 'English',
-                fields: a.fields || {},
-                attachments: a.attachments || [],
-                summary: a.summary || ''
-              });
-            });
-            return Array.from(prevMap.values());
-          });
-          addToast(`Synced ${dbApps.length} applications from Officer Database!`, 'success');
+          mergeApplicationsFromDB(dbApps);
+          if (!silent) addToast(`Synced ${dbApps.length} applications from Officer Database!`, 'success');
           return true;
         }
       }
-      addToast('No new tasks found in Database.', 'info');
+      if (!silent) addToast('No new tasks found in Database.', 'info');
     } catch (err) {
       console.warn('Could not refresh DB applications:', err);
-      addToast('Failed to connect to Officer Database.', 'error');
+      if (!silent) addToast('Failed to connect to Officer Database.', 'error');
     }
     return false;
-  }, [addToast]);
+  }, [mergeApplicationsFromDB, addToast]);
+
+  // Auto-sync: silently poll DB every 7s whenever officer/citizen/admin view is active
+  useEffect(() => {
+    if (!['officer', 'citizen', 'admin'].includes(activeView)) return;
+    handleRefreshDB(true);
+    const interval = setInterval(() => handleRefreshDB(true), 7000);
+    return () => clearInterval(interval);
+  }, [activeView, handleRefreshDB]);
 
   const toggleSound = useCallback(() => {
     setSoundEnabled(prev => !prev)
@@ -543,6 +640,14 @@ function App() {
           />
         )}
       </main>
+
+      {/* ═══════ FOOTER ═══════ */}
+      <Footer
+        onNavigate={handleNavigate}
+        activeView={activeView}
+        soundEnabled={soundEnabled}
+        ledgerEntries={ledgerEntries}
+      />
 
       {/* Floating Toast Notification Alerts */}
       <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 320 }}>

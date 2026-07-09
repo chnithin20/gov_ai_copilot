@@ -252,6 +252,8 @@ export default function CitizenPortal({ soundEnabled, onAddApplication, onAddLed
     }
   }, [voiceResponseEnabled, selectedLanguage, i18n.language]);
 
+  const recognitionRef = useRef(null);
+
   const handleMicClick = () => {
     try {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -261,11 +263,17 @@ export default function CitizenPortal({ soundEnabled, onAddApplication, onAddLed
       }
 
       if (isRecording) {
+        if (recognitionRef.current) {
+          try {
+            recognitionRef.current.abort();
+          } catch (e) {}
+        }
         setIsRecording(false);
         return;
       }
 
       const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
       recognition.continuous = false;
       const langMap = {
         'en': 'en-IN', 'hi': 'hi-IN', 'pb': 'pa-IN', 'pa': 'pa-IN',

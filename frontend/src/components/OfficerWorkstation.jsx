@@ -240,12 +240,11 @@ Block Development Officer, Patna Sadar
 };
 
 export default function OfficerWorkstation({ soundEnabled, applications = [], onUpdateStatus, onRefreshDB, ledgerEntries = [] }) {
-  const [selectedApp, setSelectedApp] = useState(() => {
+  const [selectedAppId, setSelectedAppId] = useState(() => {
     try {
-      const saved = localStorage.getItem('gov_officer_selectedApp');
+      const saved = localStorage.getItem('gov_officer_selectedAppId');
       if (saved && saved !== 'null' && saved !== 'undefined') {
-        const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === 'object' && parsed.id) return parsed;
+        return JSON.parse(saved);
       }
     } catch (e) {}
     return null;
@@ -261,8 +260,8 @@ export default function OfficerWorkstation({ soundEnabled, applications = [], on
   const [previewDoc, setPreviewDoc] = useState(null);
 
   useEffect(() => {
-    localStorage.setItem('gov_officer_selectedApp', JSON.stringify(selectedApp || null));
-  }, [selectedApp]);
+    localStorage.setItem('gov_officer_selectedAppId', JSON.stringify(selectedAppId || null));
+  }, [selectedAppId]);
 
   useEffect(() => {
     localStorage.setItem('gov_officer_activeTab', activeTab);
@@ -270,6 +269,10 @@ export default function OfficerWorkstation({ soundEnabled, applications = [], on
 
   const safeApps = useMemo(() => Array.isArray(applications) ? applications : [], [applications]);
   const safeLedger = useMemo(() => Array.isArray(ledgerEntries) ? ledgerEntries : [], [ledgerEntries]);
+
+  const selectedApp = useMemo(() => {
+    return safeApps.find(a => a && a.id === selectedAppId) || null;
+  }, [safeApps, selectedAppId]);
 
   const stats = useMemo(() => ({
     total: safeApps.length,
@@ -298,7 +301,7 @@ export default function OfficerWorkstation({ soundEnabled, applications = [], on
   }, [selectedApp]);
 
   const handleSelectApp = (app) => {
-    setSelectedApp(app);
+    setSelectedAppId(app?.id || null);
     setDraftVisible(false);
     if (soundEnabled) playSound('click');
   };
